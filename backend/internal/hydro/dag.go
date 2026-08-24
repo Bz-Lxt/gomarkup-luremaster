@@ -77,8 +77,8 @@ func ScoreBite(snap Snapshot, waterTemp *float64, at time.Time) (float64, bool, 
 	reasons := map[string][]string{}
 	for _, e := range edges {
 		if e.When(ctx) {
-			bonus[e.From] += e.Bonus
-			reasons[e.From] = append(reasons[e.From], e.Reason)
+			bonus[e.To] += e.Bonus
+			reasons[e.To] = append(reasons[e.To], e.Reason)
 		}
 	}
 
