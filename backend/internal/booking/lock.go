@@ -39,8 +39,6 @@ type Locker struct {
 	Redis DistLock
 	TTL   time.Duration
 	Now   func() time.Time
-
-	release func()
 }
 
 func (l *Locker) now() time.Time {
@@ -65,10 +63,9 @@ func (l *Locker) Claim(ctx context.Context, slotID, userID string) (SlotRecord, 
 			return SlotRecord{}, ErrTaken
 		}
 		if err == nil && rel != nil {
-			l.release = rel
-			unlock = func() {
-				l.release()
-			}
+			// Capture rel locally so each Claim unblocks its own lock,
+			// independent of concurrent Claims on other slots.
+			unlock = rel
 		}
 		// Redis error → degrade to DB pessimistic lock only
 	}
