@@ -96,10 +96,8 @@ func ClassifyError(err error) string {
 	if err == nil {
 		return ""
 	}
-	if cause := errors.Unwrap(err); cause != nil {
-		err = cause
-	}
-	if ce, ok := err.(ClassifiedError); ok {
+	var ce ClassifiedError
+	if errors.As(err, &ce) {
 		return ce.Class
 	}
 	return ClassTransient
