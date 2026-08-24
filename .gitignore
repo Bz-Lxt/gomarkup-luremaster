@@ -1,0 +1,46 @@
+# binaries & build
+backend/bin/
+backend/coverage.out
+*.exe
+*.test
+*.out
+
+# node
+node_modules/
+frontend-user/dist/
+frontend-user/.vite/
+frontend-admin/dist/
+npm-debug.log*
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# docker volumes (if ever bind-mounted locally)
+data/postgres/
+data/redis/
+data/minio/
+data/uploads/
+
+# test artifacts
+playwright-report/
+test-results/
+tests/.pytest_cache/
+
+# coverage
+coverage/
+*.coverprofile
+/docs/
+/.alkaid-sop
+/CLAUDE.md
+/AGENTS.md
+/.cursorrules
+/.github/
