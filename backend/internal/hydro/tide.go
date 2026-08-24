@@ -27,24 +27,37 @@ func (HarmonicTide) Series(q Query, from, to time.Time) ([]TidePoint, error) {
 	if to.Before(from) {
 		return nil, ClassifiedError{Class: ClassValidation, Message: "tide window inverted"}
 	}
+	cons := harmonicConstituents(q)
+	var out []TidePoint
+	for t := from.UTC().Truncate(20 * time.Minute); !t.After(to.UTC()); t = t.Add(20 * time.Minute) {
+		out = append(out, TidePoint{At: t, HeightM: harmonicHeightM(cons, t)})
+	}
+	return out, nil
+}
+
+func harmonicConstituents(q Query) []constituent {
 	latFactor := 0.65 + 0.35*math.Cos(q.Lat*math.Pi/180)
-	cons := []constituent{
+	return []constituent{
 		{amp: 1.15 * latFactor, speed: 28.984104, phase: 0.35 + q.Lon*0.004},
 		{amp: 0.42 * latFactor, speed: 30.000000, phase: 1.10 + q.Lon*0.003},
 		{amp: 0.28 * latFactor, speed: 15.041069, phase: 2.20},
 		{amp: 0.22 * latFactor, speed: 13.943035, phase: 0.80},
 	}
-	var out []TidePoint
+}
+
+// harmonicHeight returns the unrounded harmonic tide height at instant t.
+func harmonicHeight(q Query, t time.Time) float64 {
+	return harmonicHeightM(harmonicConstituents(q), t)
+}
+
+func harmonicHeightM(cons []constituent, t time.Time) float64 {
 	t0 := time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
-	for t := from.UTC().Truncate(20 * time.Minute); !t.After(to.UTC()); t = t.Add(20 * time.Minute) {
-		hours := t.Sub(t0).Hours()
-		var h float64
-		for _, c := range cons {
-			h += c.amp * math.Cos((c.speed*math.Pi/180)*hours+c.phase)
-		}
-		out = append(out, TidePoint{At: t, HeightM: math.Round(h*1000) / 1000})
+	hours := t.Sub(t0).Hours()
+	var h float64
+	for _, c := range cons {
+		h += c.amp * math.Cos((c.speed*math.Pi/180)*hours+c.phase)
 	}
-	return out, nil
+	return math.Round(h*1000) / 1000
 }
 
 func ClassifyTide(series []TidePoint, at time.Time) (height, phasePct float64, window string) {
@@ -108,7 +121,11 @@ func interpTide(series []TidePoint, at time.Time) (height, slope float64) {
 			}
 			r := at.Sub(a.At).Hours() / span
 			h := a.HeightM + (b.HeightM-a.HeightM)*r
-			return h, b.HeightM - a.HeightM
+			// Normalize the slope to a per-hour rate so that the fixed
+			// thresholds in ClassifyTide (calibrated for hourly data) stay
+			// correct regardless of the tide-source sampling interval
+			// (e.g. 10-minute vs hourly).
+			return h, (b.HeightM - a.HeightM) / span
 		}
 	}
 	return last.HeightM, 0
